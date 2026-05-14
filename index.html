@@ -489,9 +489,13 @@ function installApp(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.
 let currentUser=null;
  window.onload = function () {
 
+   window.onload = function () {
+
    const savedUser = localStorage.getItem('bt_current_user');
 
    if(savedUser){
+
+      const users = getUsers();
 
       currentUser = savedUser;
 
@@ -499,7 +503,13 @@ let currentUser=null;
 
       document.getElementById('main-app').style.display = 'block';
 
+      if(users[savedUser]){
+         document.getElementById('user-display').textContent =
+         users[savedUser].name.split(' ')[0];
+      }
+
       loadUserData(savedUser);
+
 
    }
 
@@ -527,8 +537,9 @@ function doSignup(){
   users[user]={name,hash:hashPass(pass)};
   saveUsers(users);
   ok.textContent='✅ Account created! Logging you in...';
-  setTimeout(()=>loginUser(user,name),900);
-}
+setTimeout(() => {
+   loginUser(user,name);
+}, 1000);
 function doLogin(){
   const user=document.getElementById('login-user').value.trim().toLowerCase();
   const pass=document.getElementById('login-pass').value;
