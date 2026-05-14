@@ -487,6 +487,23 @@ function installApp(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.
 
 // ── AUTH SYSTEM ──
 let currentUser=null;
+ window.onload = function () {
+
+   const savedUser = localStorage.getItem('bt_current_user');
+
+   if(savedUser){
+
+      currentUser = savedUser;
+
+      document.getElementById('auth-screen').style.display = 'none';
+
+      document.getElementById('app-screen').style.display = 'block';
+
+      loadUserData(savedUser);
+
+   }
+
+}
 function getUsers(){try{return JSON.parse(localStorage.getItem('bt_users')||'{}');}catch(e){return {};}}
 function saveUsers(u){localStorage.setItem('bt_users',JSON.stringify(u));}
 function hashPass(p){let h=0;for(let i=0;i<p.length;i++){h=(h<<5)-h+p.charCodeAt(i);h|=0;}return h.toString(36);}
