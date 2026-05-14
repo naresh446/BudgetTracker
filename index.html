@@ -523,6 +523,13 @@ function doLogin(){
   if(users[user].hash!==hashPass(pass)){err.textContent='Incorrect password. Try again.';return;}
   loginUser(user,users[user].name);
 }
+ window.onload = function () {
+   const savedUser = localStorage.getItem('bt_current_user');
+
+   if(savedUser){
+      loginUser(savedUser, savedUser);
+   }
+}
 function loginUser(username,name){
   currentUser=username;
   localStorage.setItem('bt_current_user',username);
