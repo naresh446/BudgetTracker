@@ -488,8 +488,7 @@ function installApp(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.
 // ── AUTH SYSTEM ──
 let currentUser=null;
  window.onload = function () {
-
-   window.onload = function () {
+  
 
    const savedUser = localStorage.getItem('bt_current_user');
 
@@ -559,37 +558,42 @@ function doLogin(){
    }
 }
 function loginUser(username,name){
-  function loginUser(username,name){
 
-   currentUser = username;
+  currentUser = username;
 
-   localStorage.setItem('bt_current_user', username);
+  localStorage.setItem('bt_current_user', username);
 
-   document.getElementById('auth-screen').style.display = 'none';
+  const initials = name.split(' ')
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0,2);
 
-   document.getElementById('main-app').style.display = 'block';
+  document.getElementById('user-avatar').textContent = initials;
 
-   document.getElementById('user-display').textContent = name.split(' ')[0];
+  document.getElementById('user-display').textContent =
+    name.split(' ')[0];
 
-   loadUserData(username);
-}
-  const initials=name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  document.getElementById('user-avatar').textContent=initials;
-  document.getElementById('user-display').textContent=name.split(' ')[0];
-  document.getElementById('auth-screen').style.display='none';
-  document.getElementById('main-app').style.display='flex';
+  document.getElementById('auth-screen').style.display = 'none';
+
+  document.getElementById('main-app').style.display = 'flex';
+
+  loadUserData(username);
+
   renderHome();
+
   renderCurrentBudget();
 }
+
 function doLogout(){
-  if(!confirm('Are you sure you want to logout?'))return;
-  currentUser=null;
-  function doLogout(){
 
-   localStorage.removeItem('bt_current_user');
+  if(!confirm('Are you sure you want to logout?')) return;
 
-   location.reload();
+  localStorage.removeItem('bt_current_user');
 
+  currentUser = null;
+
+  location.reload();
 }
   expenses=[];emis=[];totalBudget=0;netIncome=0;
   document.getElementById('main-app').style.display='none';
