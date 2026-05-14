@@ -254,10 +254,16 @@
 
         <!-- BUDGET & INCOME -->
         <div id="sub-budget" class="sub-screen">
-          <div class="form-group">
-            <label>💼 Net Monthly Income (₹)</label>
-            <input type="number" id="inp-income" placeholder="e.g. 50000" min="0" inputmode="decimal" oninput="onIncomeInput()">
-            <div class="subcat-note">Your total salary / earnings per month</div>
+          <!-- INCOME SOURCES -->
+          <div style="margin-bottom:1rem;">
+            <div class="section-title" style="margin-bottom:0.5rem;">💰 Income Sources</div>
+            <div style="font-size:12px;color:#888;margin-bottom:10px;">Add all your income sources this month.</div>
+            <div id="income-sources-list"></div>
+            <button onclick="addIncomeSource()" style="width:100%;padding:9px;background:#f0f7ff;color:#185FA5;border:1px dashed #185FA5;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;margin-top:8px;">+ Add Income Source</button>
+            <div style="background:#e8f1fb;border-radius:8px;padding:8px 12px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;color:#185FA5;font-weight:500;">Total Income</span>
+              <span style="font-size:16px;font-weight:700;color:#185FA5;" id="total-income-display">₹0</span>
+            </div>
           </div>
 
           <div style="margin-bottom:1rem;">
@@ -346,6 +352,41 @@
       </div>
     </div>
 
+    <!-- MONTHLY REPORT -->
+    <div id="tab-monthly" class="screen">
+      <div class="content">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+          <button onclick="changeMonth(-1)" style="background:#f5f7fa;border:none;border-radius:8px;padding:8px 14px;font-size:18px;cursor:pointer;">‹</button>
+          <div style="text-align:center;">
+            <div style="font-size:16px;font-weight:600;color:#111;" id="monthly-title">—</div>
+            <div style="font-size:12px;color:#888;" id="monthly-sub"></div>
+          </div>
+          <button onclick="changeMonth(1)" style="background:#f5f7fa;border:none;border-radius:8px;padding:8px 14px;font-size:18px;cursor:pointer;">›</button>
+        </div>
+
+        <!-- Summary cards -->
+        <div class="metric-grid" style="margin-bottom:1rem;">
+          <div class="metric"><div class="label">Total Income</div><div class="val info" id="mo-income">₹0</div></div>
+          <div class="metric"><div class="label">Total Spent</div><div class="val danger" id="mo-spent">₹0</div></div>
+          <div class="metric"><div class="label">EMI Paid</div><div class="val danger" id="mo-emi">₹0</div></div>
+          <div class="metric"><div class="label">Savings</div><div class="val success" id="mo-savings">₹0</div></div>
+        </div>
+
+        <!-- Category breakdown -->
+        <div class="section-title">Category Breakdown</div>
+        <div id="mo-cat-bars" style="margin-bottom:1rem;"></div>
+
+        <!-- Monthly chart -->
+        <div style="position:relative;width:100%;height:180px;margin-bottom:1.25rem;">
+          <canvas id="monthlyChart"></canvas>
+        </div>
+
+        <!-- Expense list for that month -->
+        <div class="section-title">Expenses This Month</div>
+        <div id="mo-expense-list"></div>
+      </div>
+    </div>
+
   </div>
 
   <div class="nav">
@@ -353,7 +394,7 @@
     <button onclick="showTab('add',this)"><i class="ti ti-plus"></i>Add</button>
     <button onclick="showTab('emi',this)"><i class="ti ti-credit-card"></i>EMI</button>
     <button onclick="showTab('budget',this)"><i class="ti ti-chart-bar"></i>Budget</button>
-    <button onclick="showTab('history',this)"><i class="ti ti-clock"></i>History</button>
+    <button onclick="showTab('monthly',this)"><i class="ti ti-calendar-stats"></i>Monthly</button>
   </div>
 </div>
 
@@ -384,6 +425,52 @@
         <span style="color:#888;">Total Interest</span><span style="font-weight:600;" id="edit-res-interest">—</span>
       </div>
     </div>
+
+    <!-- PART PAYMENT SECTION -->
+    <div style="border-top:1px solid #eee;margin:1rem 0;padding-top:1rem;">
+      <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:4px;">💳 Part Payment</div>
+      <div style="font-size:12px;color:#888;margin-bottom:10px;">Pay extra amount to reduce outstanding principal. Choose what to reduce — EMI amount or tenure.</div>
+      <div class="form-group">
+        <label>Part Payment Amount (₹)</label>
+        <input type="number" id="part-pay-amt" placeholder="e.g. 50000" inputmode="decimal" oninput="calcPartPayment()">
+      </div>
+      <div class="form-group">
+        <label>Reduce</label>
+        <div style="display:flex;gap:8px;">
+          <button id="pp-reduce-tenure" onclick="setPPMode('tenure')" style="flex:1;padding:9px;border:1px solid #185FA5;border-radius:8px;font-size:13px;background:#185FA5;color:#fff;cursor:pointer;font-weight:500;">📅 Tenure</button>
+          <button id="pp-reduce-emi" onclick="setPPMode('emi')" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;background:#f5f7fa;color:#333;cursor:pointer;font-weight:500;">💰 EMI Amount</button>
+        </div>
+      </div>
+      <div id="part-pay-result" style="background:#e8f5e9;border-radius:10px;padding:0.75rem 1rem;display:none;">
+        <div style="font-size:12px;font-weight:600;color:#27ae60;margin-bottom:6px;">After Part Payment:</div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span style="color:#555;">Outstanding Balance</span><span style="font-weight:600;" id="pp-balance">—</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span style="color:#555;">New Tenure</span><span style="font-weight:600;" id="pp-new-tenure">—</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span style="color:#555;">New EMI</span><span style="font-weight:600;color:#185FA5;" id="pp-new-emi">—</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span style="color:#555;">Interest Saved</span><span style="font-weight:600;color:#27ae60;" id="pp-interest-saved">—</span></div>
+      </div>
+      <button id="apply-part-pay-btn" onclick="applyPartPayment()" style="display:none;width:100%;padding:10px;background:#27ae60;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;">✅ Apply Part Payment</button>
+    </div>
+
+    <!-- FORECLOSURE SECTION -->
+    <div style="border-top:1px solid #eee;margin:0 0 1rem;padding-top:1rem;">
+      <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:4px;">🔒 Foreclose Loan</div>
+      <div style="font-size:12px;color:#888;margin-bottom:10px;">Close the loan completely by paying outstanding balance. A foreclosure charge may apply.</div>
+      <div id="foreclose-info" style="background:#fff8e1;border-radius:10px;padding:0.75rem 1rem;margin-bottom:10px;display:none;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span style="color:#555;">Outstanding Balance</span><span style="font-weight:600;" id="fc-balance">—</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span style="color:#555;">Foreclosure Charge (2%)</span><span style="font-weight:600;" id="fc-charge">—</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;border-top:0.5px solid #eee;margin-top:4px;padding-top:6px;"><span style="color:#333;font-weight:600;">Total Payable</span><span style="font-weight:700;color:#c0392b;" id="fc-total">—</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span style="color:#555;">Interest Saved</span><span style="font-weight:600;color:#27ae60;" id="fc-saved">—</span></div>
+      </div>
+      <button onclick="showForecloseInfo()" style="width:100%;padding:10px;background:#fff3e0;color:#e67e22;border:1px solid #e67e22;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">📊 Calculate Foreclosure</button>
+      <button id="confirm-foreclose-btn" onclick="confirmForeclose()" style="display:none;width:100%;padding:10px;background:#c0392b;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;">🔒 Confirm Foreclose Loan</button>
+    </div>
+
+    <!-- PART PAYMENT HISTORY -->
+    <div id="part-pay-history-wrap" style="border-top:1px solid #eee;padding-top:1rem;margin-bottom:1rem;display:none;">
+      <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:8px;">📋 Part Payment History</div>
+      <div id="part-pay-history"></div>
+    </div>
+
     <div class="modal-btn-row">
       <button class="modal-cancel-btn" onclick="closeEmiModal()">Cancel</button>
       <button class="modal-save-btn" onclick="saveEditEmi()">💾 Save Changes</button>
@@ -465,6 +552,7 @@ function loadUserData(u){
   try{totalBudget=parseFloat(localStorage.getItem('bt_budget_'+u)||'0');}catch(e){totalBudget=0;}
   try{netIncome=parseFloat(localStorage.getItem('bt_income_'+u)||'0');}catch(e){netIncome=0;}
   try{catBudgets=JSON.parse(localStorage.getItem('bt_catbudgets_'+u)||'{}');}catch(e){catBudgets={};}
+  try{incomeSources=JSON.parse(localStorage.getItem('bt_incomesources_'+u)||'[]');}catch(e){incomeSources=[];}
 }
 // Auto-login if session exists
 (function(){const s=localStorage.getItem('bt_current_user');if(s){const u=getUsers();if(u[s])loginUser(s,u[s].name);}})();
@@ -485,7 +573,7 @@ const CAT_COLORS=['#378ADD','#1D9E75','#EF9F27','#D4537E','#7F77DD','#888780'];
 const CAT_BG=['#E6F1FB','#E1F5EE','#FAEEDA','#FBEAF0','#EEEDFE','#F1EFE8'];
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-let expenses=[],emis=[],totalBudget=0,netIncome=0,catBudgets={};
+let expenses=[],emis=[],totalBudget=0,netIncome=0,catBudgets={},incomeSources=[];
 
 const today=new Date();
 const CUR_Y=today.getFullYear(),CUR_M=today.getMonth(),CUR_D=today.getDate();
@@ -517,6 +605,7 @@ function save(){
   localStorage.setItem('bt_budget_'+currentUser,totalBudget);
   localStorage.setItem('bt_income_'+currentUser,netIncome);
   localStorage.setItem('bt_catbudgets_'+currentUser,JSON.stringify(catBudgets));
+  localStorage.setItem('bt_incomesources_'+currentUser,JSON.stringify(incomeSources));
 }
 function fmtAmt(n){return '₹'+Math.round(n).toLocaleString('en-IN');}
 function getExpDate(){const d=String(document.getElementById('exp-day').value).padStart(2,'0');const m=String(document.getElementById('exp-month').value).padStart(2,'0');const y=document.getElementById('exp-year').value;return `${y}-${m}-${d}`;}
@@ -558,7 +647,7 @@ function renderHome(){
   document.getElementById('recent-list').innerHTML=recent.length?recent.map(e=>`<div class="expense-item"><div class="cat-icon" style="background:${CAT_BG[CATS.indexOf(e.cat)]}">${CAT_ICONS[e.cat]||'📦'}</div><div class="expense-info"><div class="name">${e.subcat||e.note||e.cat}</div><div class="date">${e.date} · ${e.cat}${e.subcat?'':''}</div></div><div class="expense-amt">${fmtAmt(e.amt)}</div></div>`).join(''):'<div class="empty">No expenses yet</div>';
 }
 
-function renderCurrentBudget(){ renderSettings(); }
+function renderCurrentBudget(){ renderSettings(); renderIncomeSourcesList(); }
 
 function renderCatBudgetInputs(){
   const wrap=document.getElementById('cat-budget-inputs');
@@ -589,8 +678,190 @@ function updateAllocTotal(){
 
 function onIncomeInput(){ updateAllocTotal(); }
 
-function renderSettings(){
-  const el=document.getElementById('current-settings');
+// ── INCOME SOURCES ──
+const INCOME_TYPES=['💼 Salary','🏠 Rent','📈 Investment Profit','💻 Freelance','🏪 Business','🎁 Bonus','💰 Other'];
+
+function renderIncomeSourcesList(){
+  const wrap=document.getElementById('income-sources-list');
+  if(!wrap)return;
+  if(!incomeSources.length){
+    wrap.innerHTML=`<div style="text-align:center;padding:1rem 0;color:#ccc;font-size:13px;">No income sources added yet</div>`;
+    document.getElementById('total-income-display').textContent='₹0';
+    return;
+  }
+  wrap.innerHTML=incomeSources.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;color:#111;">${s.type}</div>
+        ${s.note?`<div style="font-size:11px;color:#aaa;">${s.note}</div>`:''}
+      </div>
+      <div style="font-size:15px;font-weight:600;color:#185FA5;">${fmtAmt(s.amt)}</div>
+      <button onclick="removeIncomeSource(${i})" style="background:none;border:none;color:#ddd;cursor:pointer;font-size:16px;padding:2px 6px;">✕</button>
+    </div>`).join('');
+  const total=incomeSources.reduce((s,x)=>s+x.amt,0);
+  document.getElementById('total-income-display').textContent=fmtAmt(total);
+  updateAllocTotal();
+}
+
+function addIncomeSource(){
+  // build inline form
+  const wrap=document.getElementById('income-sources-list');
+  const formId='income-form-new';
+  if(document.getElementById(formId))return;
+  const div=document.createElement('div');
+  div.id=formId;
+  div.style.cssText='background:#f5f7fa;border-radius:10px;padding:0.75rem;margin-bottom:8px;';
+  div.innerHTML=`
+    <div class="form-group" style="margin-bottom:8px;">
+      <label style="font-size:12px;">Income Type</label>
+      <select id="new-inc-type" style="width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;color:#111;">
+        ${INCOME_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:8px;">
+      <label style="font-size:12px;">Amount (₹)</label>
+      <input type="number" id="new-inc-amt" placeholder="e.g. 45000" inputmode="decimal" style="width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+    </div>
+    <div class="form-group" style="margin-bottom:8px;">
+      <label style="font-size:12px;">Note (optional)</label>
+      <input type="text" id="new-inc-note" placeholder="e.g. April salary" style="width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="confirmAddIncome()" style="flex:1;padding:8px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">✅ Add</button>
+      <button onclick="document.getElementById('income-form-new').remove()" style="flex:1;padding:8px;background:#f5f7fa;color:#333;border:1px solid #ddd;border-radius:8px;font-size:13px;cursor:pointer;">Cancel</button>
+    </div>`;
+  wrap.prepend(div);
+}
+
+function confirmAddIncome(){
+  const type=document.getElementById('new-inc-type').value;
+  const amt=parseFloat(document.getElementById('new-inc-amt').value);
+  const note=document.getElementById('new-inc-note').value.trim();
+  if(!amt||amt<=0){alert('Please enter a valid amount');return;}
+  incomeSources.push({type,amt,note,month:`${CUR_Y}-${String(CUR_M+1).padStart(2,'0')}`});
+  document.getElementById('income-form-new')?.remove();
+  renderIncomeSourcesList();
+}
+
+function removeIncomeSource(i){
+  incomeSources.splice(i,1);
+  renderIncomeSourcesList();
+}
+
+function onIncomeInput(){updateAllocTotal();}
+
+function saveIncomeAndBudget(){
+  // calculate total income from sources
+  const sourcesTotal=incomeSources.reduce((s,x)=>s+x.amt,0);
+  netIncome=sourcesTotal||netIncome;
+  // read category budgets
+  let total=0;
+  CATS.forEach(c=>{
+    const v=parseFloat(document.getElementById('catbud-'+c)?.value||0);
+    catBudgets[c]=v>0?v:0;
+    total+=catBudgets[c];
+  });
+  totalBudget=total>0?total:netIncome;
+  const msg=document.getElementById('budget-msg');
+  if(!netIncome&&total===0){msg.textContent='Please add income or category budget';msg.style.color='#c0392b';return;}
+  if(netIncome>0&&total>netIncome){msg.textContent='⚠️ Total budget exceeds income! Saved anyway.';msg.style.color='#f39c12';}
+  else{msg.textContent='✅ Budget & income saved!';msg.style.color='#27ae60';}
+  save();
+  renderSettings();
+  renderHome();
+  setTimeout(()=>msg.textContent='',3000);
+}
+
+// ── MONTHLY VIEW ──
+let viewYear=CUR_Y, viewMonth=CUR_M;
+let monthlyChartInst=null;
+
+function changeMonth(dir){
+  viewMonth+=dir;
+  if(viewMonth>11){viewMonth=0;viewYear++;}
+  if(viewMonth<0){viewMonth=11;viewYear--;}
+  renderMonthly();
+}
+
+function getMonthExpenses(y,m){
+  return expenses.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m;});
+}
+
+function getMonthIncome(y,m){
+  const key=`${y}-${String(m+1).padStart(2,'0')}`;
+  const src=incomeSources.filter(s=>s.month===key);
+  if(src.length) return src.reduce((s,x)=>s+x.amt,0);
+  // fallback: if current month use netIncome
+  if(y===CUR_Y&&m===CUR_M) return netIncome;
+  return 0;
+}
+
+function getMonthEmi(y,m){
+  const ym=y*12+m;
+  return emis.filter(e=>{
+    const sd=new Date(e.start);
+    const startYM=sd.getFullYear()*12+sd.getMonth();
+    return ym>=startYM&&ym<=startYM+e.tenure-1&&!e.foreclosed;
+  }).reduce((s,e)=>s+e.emi,0);
+}
+
+function renderMonthly(){
+  const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('monthly-title').textContent=`${MONTH_NAMES[viewMonth]} ${viewYear}`;
+  const list=getMonthExpenses(viewYear,viewMonth);
+  const spent=list.reduce((s,e)=>s+e.amt,0);
+  const income=getMonthIncome(viewYear,viewMonth);
+  const emiAmt=getMonthEmi(viewYear,viewMonth);
+  const savings=income-spent-emiAmt;
+
+  // check if future
+  const isFuture=viewYear>CUR_Y||(viewYear===CUR_Y&&viewMonth>CUR_M);
+  document.getElementById('monthly-sub').textContent=isFuture?'Future month':(viewYear===CUR_Y&&viewMonth===CUR_M?'Current month':'Past month');
+
+  document.getElementById('mo-income').textContent=fmtAmt(income);
+  document.getElementById('mo-spent').textContent=fmtAmt(spent);
+  document.getElementById('mo-emi').textContent=fmtAmt(emiAmt);
+  document.getElementById('mo-savings').textContent=fmtAmt(Math.max(0,savings));
+  document.getElementById('mo-savings').className='val '+(savings<0?'danger':'success');
+
+  // category bars
+  const tots=catTotals(list);
+  document.getElementById('mo-cat-bars').innerHTML=CATS.map((c,i)=>{
+    if(!tots[c])return'';
+    const bud=catBudgets[c]||0;
+    const pct=bud>0?Math.min(100,Math.round((tots[c]/bud)*100)):(spent>0?Math.min(100,Math.round((tots[c]/spent)*100)):0);
+    const over=bud>0&&tots[c]>bud;
+    return `<div class="budget-row">
+      <span class="budget-cat">${CAT_ICONS[c]} ${c}</span>
+      <div class="budget-bar-wrap"><div class="budget-bar" style="width:${pct}%;background:${over?'#c0392b':CAT_COLORS[i]};"></div></div>
+      <span class="budget-nums">${fmtAmt(tots[c])}</span>
+    </div>`;
+  }).join('')||'<div class="empty" style="padding:1rem 0;">No expenses this month</div>';
+
+  // doughnut chart
+  const ctx=document.getElementById('monthlyChart');
+  if(monthlyChartInst)monthlyChartInst.destroy();
+  const labels=CATS.filter(c=>tots[c]>0);
+  const data=labels.map(c=>tots[c]);
+  const colors=labels.map(c=>CAT_COLORS[CATS.indexOf(c)]);
+  if(labels.length){
+    monthlyChartInst=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},boxWidth:12}}}}});
+  }
+
+  // expense list
+  const sorted=[...list].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById('mo-expense-list').innerHTML=sorted.length?sorted.map(e=>{
+    const idx=CATS.indexOf(e.cat);
+    return `<div class="expense-item">
+      <div class="cat-icon" style="background:${CAT_BG[idx]}">${CAT_ICONS[e.cat]||'📦'}</div>
+      <div class="expense-info">
+        <div class="name">${e.subcat||e.note||e.cat}</div>
+        <div class="date">${e.date} · ${e.cat}${e.subcat?' › '+e.subcat:''}</div>
+      </div>
+      <div class="expense-amt">${fmtAmt(e.amt)}</div>
+    </div>`;
+  }).join(''):'<div class="empty">No expenses recorded</div>';
+}
   if(!el)return;
   const tots=catTotals(thisMonthExpenses());
   const catRows=CATS.map((c,i)=>{
@@ -700,17 +971,24 @@ function renderEmiList(){
     const paid=Math.max(0,ym-startYM);
     const rem=Math.max(0,endYM-ym+1);
     const pct=Math.min(100,Math.round((paid/e.tenure)*100));
-    const active=ym>=startYM&&ym<=endYM;
-    const completed=ym>endYM;
+    const active=!e.foreclosed&&ym>=startYM&&ym<=endYM;
+    const completed=e.foreclosed||(ym>endYM);
+    const foreclosed=e.foreclosed;
     if(active)totalActive+=e.emi;
     const startLabel=sd.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+    const outstanding=foreclosed?0:getOutstandingBalance(e);
+    const ppCount=e.partPayments?e.partPayments.length:0;
+    const pillClass=foreclosed?'done':(completed?'done':(!active?'upcoming':''));
+    const pillText=foreclosed?'🔒 Foreclosed':(completed?'Completed':(active?'Active':'Upcoming'));
     return `<div class="emi-item">
-      <div class="top"><span class="ename">${e.name}</span><span class="epill ${completed?'done':(!active?'upcoming':'')}">${active?'Active':(completed?'Completed':'Upcoming')}</span></div>
-      <div class="erow"><span>${fmtAmt(e.emi)}/month</span><span>${rem>0?rem+' months left':'Done ✅'}</span></div>
+      <div class="top"><span class="ename">${e.name}</span><span class="epill ${pillClass}">${pillText}</span></div>
+      <div class="erow"><span>${fmtAmt(e.emi)}/month</span><span>${foreclosed?'Closed on '+e.foreclosedOn:(rem>0?rem+' months left':'Done ✅')}</span></div>
       <div class="erow"><span>Start: ${startLabel}</span><span>${pct}% paid</span></div>
-      <div class="eprogbar"><div class="eprogfill" style="width:${pct}%"></div></div>
+      ${!foreclosed?`<div class="erow" style="margin-top:3px;"><span style="color:#185FA5;font-weight:500;">Outstanding: ${fmtAmt(outstanding)}</span>${ppCount>0?`<span style="color:#888;">${ppCount} part payment${ppCount>1?'s':''}</span>`:''}</div>`:''}
+      ${foreclosed?`<div style="font-size:12px;color:#27ae60;margin-top:4px;">✅ Loan fully closed${e.foreclosedOn?' on '+e.foreclosedOn:''}</div>`:''}
+      <div class="eprogbar"><div class="eprogfill" style="width:${pct}%;background:${foreclosed?'#27ae60':'#185FA5'};"></div></div>
       <div style="display:flex;gap:10px;margin-top:10px;">
-        <button onclick="openEmiEdit(${e.id})" style="flex:1;padding:7px;background:#e8f1fb;color:#185FA5;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;"><i class="ti ti-pencil"></i> Edit</button>
+        ${!foreclosed?`<button onclick="openEmiEdit(${e.id})" style="flex:1;padding:7px;background:#e8f1fb;color:#185FA5;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;"><i class="ti ti-pencil"></i> Edit / Pay</button>`:'<div style="flex:1;"></div>'}
         <button onclick="deleteEmi(${e.id})" style="flex:1;padding:7px;background:#fdecea;color:#c0392b;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;"><i class="ti ti-trash"></i> Delete</button>
       </div>
     </div>`;
@@ -720,6 +998,22 @@ function renderEmiList(){
 
 function deleteEmi(id){if(confirm('Delete this EMI?')){emis=emis.filter(e=>e.id!==id);save();renderEmiList();renderHome();}}
 
+let ppMode='tenure'; // 'tenure' or 'emi'
+
+function getOutstandingBalance(e){
+  // Calculate outstanding principal after payments made so far
+  const ym=CUR_Y*12+CUR_M;
+  const sd=new Date(e.start);
+  const startYM=sd.getFullYear()*12+sd.getMonth();
+  let monthsPaid=Math.max(0,ym-startYM);
+  const r=e.rate/(12*100);
+  const P=e.principal;
+  const n=e.tenure;
+  // Outstanding = P*(1+r)^monthsPaid - EMI*((1+r)^monthsPaid - 1)/r
+  const outstanding=P*Math.pow(1+r,monthsPaid)-e.emi*(Math.pow(1+r,monthsPaid)-1)/r;
+  return Math.max(0,Math.round(outstanding));
+}
+
 function openEmiEdit(id){
   const e=emis.find(x=>x.id===id);
   if(!e)return;
@@ -728,18 +1022,176 @@ function openEmiEdit(id){
   document.getElementById('edit-emi-principal').value=e.principal;
   document.getElementById('edit-emi-rate').value=e.rate;
   document.getElementById('edit-emi-tenure').value=e.tenure;
-  // build date dropdowns for modal
   ['edit-emi-day','edit-emi-month','edit-emi-year'].forEach(id=>document.getElementById(id).innerHTML='');
-  buildDays('edit-emi-day',CUR_D);
-  buildMonths('edit-emi-month',CUR_M);
-  buildYears('edit-emi-year',CUR_Y);
-  // set saved start date
+  buildDays('edit-emi-day',CUR_D);buildMonths('edit-emi-month',CUR_M);buildYears('edit-emi-year',CUR_Y);
   const sd=new Date(e.start);
   document.getElementById('edit-emi-day').value=sd.getDate();
   document.getElementById('edit-emi-month').value=sd.getMonth()+1;
   document.getElementById('edit-emi-year').value=sd.getFullYear();
+  // reset part payment & foreclosure
+  document.getElementById('part-pay-amt').value='';
+  document.getElementById('part-pay-result').style.display='none';
+  document.getElementById('apply-part-pay-btn').style.display='none';
+  document.getElementById('foreclose-info').style.display='none';
+  document.getElementById('confirm-foreclose-btn').style.display='none';
+  setPPMode('tenure');
+  // show part payment history
+  renderPartPayHistory(e);
   calcEditEmi();
   document.getElementById('emi-edit-modal').classList.add('open');
+}
+
+function setPPMode(mode){
+  ppMode=mode;
+  document.getElementById('pp-reduce-tenure').style.background=mode==='tenure'?'#185FA5':'#f5f7fa';
+  document.getElementById('pp-reduce-tenure').style.color=mode==='tenure'?'#fff':'#333';
+  document.getElementById('pp-reduce-tenure').style.border=mode==='tenure'?'1px solid #185FA5':'1px solid #ddd';
+  document.getElementById('pp-reduce-emi').style.background=mode==='emi'?'#185FA5':'#f5f7fa';
+  document.getElementById('pp-reduce-emi').style.color=mode==='emi'?'#fff':'#333';
+  document.getElementById('pp-reduce-emi').style.border=mode==='emi'?'1px solid #185FA5':'1px solid #ddd';
+  calcPartPayment();
+}
+
+function calcPartPayment(){
+  const id=parseInt(document.getElementById('edit-emi-id').value);
+  const e=emis.find(x=>x.id===id);
+  if(!e)return;
+  const ppAmt=parseFloat(document.getElementById('part-pay-amt').value||0);
+  const res=document.getElementById('part-pay-result');
+  const applyBtn=document.getElementById('apply-part-pay-btn');
+  if(!ppAmt||ppAmt<=0){res.style.display='none';applyBtn.style.display='none';return;}
+  const outstanding=getOutstandingBalance(e);
+  if(ppAmt>=outstanding){
+    document.getElementById('pp-balance').textContent=fmtAmt(outstanding);
+    document.getElementById('pp-new-tenure').textContent='0 months (Loan closed!)';
+    document.getElementById('pp-new-emi').textContent='₹0';
+    document.getElementById('pp-interest-saved').textContent=fmtAmt(e.emi*e.tenure-e.principal);
+    res.style.display='block';applyBtn.style.display='block';
+    return;
+  }
+  const newBalance=outstanding-ppAmt;
+  const r=e.rate/(12*100);
+  let newTenure=e.tenure, newEmi=e.emi;
+  if(ppMode==='tenure'){
+    // Keep EMI same, reduce tenure
+    newTenure=Math.ceil(Math.log(e.emi/(e.emi-newBalance*r))/Math.log(1+r));
+    newEmi=e.emi;
+  } else {
+    // Keep tenure same (remaining months), reduce EMI
+    const ym=CUR_Y*12+CUR_M;
+    const sd=new Date(e.start);
+    const startYM=sd.getFullYear()*12+sd.getMonth();
+    const monthsPaid=Math.max(0,ym-startYM);
+    newTenure=Math.max(1,e.tenure-monthsPaid);
+    newEmi=newBalance*r*Math.pow(1+r,newTenure)/(Math.pow(1+r,newTenure)-1);
+  }
+  const oldInterest=e.emi*e.tenure-e.principal;
+  const newInterest=newEmi*newTenure-newBalance;
+  const saved=oldInterest-newInterest;
+  document.getElementById('pp-balance').textContent=fmtAmt(newBalance);
+  document.getElementById('pp-new-tenure').textContent=newTenure+' months';
+  document.getElementById('pp-new-emi').textContent=fmtAmt(newEmi);
+  document.getElementById('pp-interest-saved').textContent=fmtAmt(Math.max(0,saved));
+  res.style.display='block';applyBtn.style.display='block';
+}
+
+function applyPartPayment(){
+  const id=parseInt(document.getElementById('edit-emi-id').value);
+  const idx=emis.findIndex(x=>x.id===id);
+  if(idx<0)return;
+  const e=emis[idx];
+  const ppAmt=parseFloat(document.getElementById('part-pay-amt').value||0);
+  if(!ppAmt||ppAmt<=0)return;
+  const outstanding=getOutstandingBalance(e);
+  // Record in history
+  if(!emis[idx].partPayments) emis[idx].partPayments=[];
+  emis[idx].partPayments.push({amt:ppAmt,date:new Date().toISOString().slice(0,10),outstanding});
+  if(ppAmt>=outstanding){
+    // Foreclose
+    emis[idx].foreclosed=true;
+    emis[idx].foreclosedOn=new Date().toISOString().slice(0,10);
+    save();
+    document.getElementById('edit-emi-msg').textContent='✅ Loan fully closed via part payment!';
+    document.getElementById('edit-emi-msg').style.color='#27ae60';
+    setTimeout(()=>{closeEmiModal();renderEmiList();renderHome();},1000);
+    return;
+  }
+  const newBalance=outstanding-ppAmt;
+  const r=e.rate/(12*100);
+  if(ppMode==='tenure'){
+    const newTenure=Math.ceil(Math.log(e.emi/(e.emi-newBalance*r))/Math.log(1+r));
+    emis[idx].principal=Math.round(newBalance);
+    emis[idx].tenure=newTenure;
+    emis[idx].start=new Date().toISOString().slice(0,10);
+  } else {
+    const ym=CUR_Y*12+CUR_M;
+    const sd=new Date(e.start);
+    const startYM=sd.getFullYear()*12+sd.getMonth();
+    const monthsPaid=Math.max(0,ym-startYM);
+    const newTenure=Math.max(1,e.tenure-monthsPaid);
+    const newEmi=newBalance*r*Math.pow(1+r,newTenure)/(Math.pow(1+r,newTenure)-1);
+    emis[idx].principal=Math.round(newBalance);
+    emis[idx].tenure=newTenure;
+    emis[idx].emi=Math.round(newEmi);
+    emis[idx].start=new Date().toISOString().slice(0,10);
+  }
+  save();
+  document.getElementById('edit-emi-msg').textContent='✅ Part payment applied!';
+  document.getElementById('edit-emi-msg').style.color='#27ae60';
+  setTimeout(()=>{closeEmiModal();renderEmiList();renderHome();},1000);
+}
+
+function showForecloseInfo(){
+  const id=parseInt(document.getElementById('edit-emi-id').value);
+  const e=emis.find(x=>x.id===id);
+  if(!e)return;
+  const outstanding=getOutstandingBalance(e);
+  const charge=Math.round(outstanding*0.02);
+  const total=outstanding+charge;
+  const remainingInterest=e.emi*(e.tenure)-e.principal-(e.emi*e.tenure-e.principal-outstanding+e.principal);
+  const ym=CUR_Y*12+CUR_M;
+  const sd=new Date(e.start);
+  const startYM=sd.getFullYear()*12+sd.getMonth();
+  const rem=Math.max(0,startYM+e.tenure-ym);
+  const interestSaved=e.emi*rem-(outstanding);
+  document.getElementById('fc-balance').textContent=fmtAmt(outstanding);
+  document.getElementById('fc-charge').textContent=fmtAmt(charge);
+  document.getElementById('fc-total').textContent=fmtAmt(total);
+  document.getElementById('fc-saved').textContent=fmtAmt(Math.max(0,interestSaved));
+  document.getElementById('foreclose-info').style.display='block';
+  document.getElementById('confirm-foreclose-btn').style.display='block';
+}
+
+function confirmForeclose(){
+  if(!confirm('Are you sure you want to foreclose this loan? This action cannot be undone.'))return;
+  const id=parseInt(document.getElementById('edit-emi-id').value);
+  const idx=emis.findIndex(x=>x.id===id);
+  if(idx<0)return;
+  const outstanding=getOutstandingBalance(emis[idx]);
+  emis[idx].foreclosed=true;
+  emis[idx].foreclosedOn=new Date().toISOString().slice(0,10);
+  emis[idx].foreclosureAmt=outstanding+Math.round(outstanding*0.02);
+  if(!emis[idx].partPayments) emis[idx].partPayments=[];
+  emis[idx].partPayments.push({amt:outstanding,date:new Date().toISOString().slice(0,10),outstanding,type:'foreclose'});
+  save();
+  document.getElementById('edit-emi-msg').textContent='🔒 Loan foreclosed successfully!';
+  document.getElementById('edit-emi-msg').style.color='#27ae60';
+  setTimeout(()=>{closeEmiModal();renderEmiList();renderHome();},1000);
+}
+
+function renderPartPayHistory(e){
+  const wrap=document.getElementById('part-pay-history-wrap');
+  const list=document.getElementById('part-pay-history');
+  if(!e.partPayments||!e.partPayments.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  list.innerHTML=e.partPayments.map(p=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid #f0f0f0;font-size:13px;">
+      <div>
+        <div style="font-weight:500;color:#111;">${p.type==='foreclose'?'🔒 Foreclosure':('💳 Part Payment')}</div>
+        <div style="color:#aaa;font-size:11px;">${p.date} · Balance was ${fmtAmt(p.outstanding)}</div>
+      </div>
+      <div style="font-weight:600;color:#c0392b;">-${fmtAmt(p.amt)}</div>
+    </div>`).join('');
 }
 
 function closeEmiModal(){
@@ -870,12 +1322,13 @@ function showTab(name,btn){
   if(name==='history')renderHistory();
   if(name==='emi')renderEmiList();
   if(name==='add')renderSettings();
+  if(name==='monthly'){viewYear=CUR_Y;viewMonth=CUR_M;renderMonthly();}
 }
 function showSub(id,btn){
   document.querySelectorAll('#tab-add .sub-screen').forEach(s=>s.classList.remove('active'));
   btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
   document.getElementById(id).classList.add('active');btn.classList.add('active');
-  if(id==='sub-budget')renderSettings();}
+  if(id==='sub-budget'){renderSettings();renderIncomeSourcesList();}}
 function showEmiSub(id,btn){
   document.querySelectorAll('#tab-emi .sub-screen').forEach(s=>s.classList.remove('active'));
   btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
